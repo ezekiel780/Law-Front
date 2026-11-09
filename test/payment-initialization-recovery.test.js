@@ -1,0 +1,28 @@
+const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
+
+const root = path.resolve(__dirname, '..')
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
+
+const errors = read('services/errors/Errors.js')
+const historyModal = read('components/dashboard/subscription/history-payment-modal.vue')
+const purchaseModal = read('components/dashboard/subscription/payment-modal.vue')
+const history = read('components/dashboard/subscription/history.vue')
+const followUp = read('components/dashboard/subscription/payment-issue-follow-up-modal.vue')
+const api = read('api/Subscription.js')
+
+assert.match(errors, /type:\s*apiError/, 'API error parsing must retain the machine-readable error type')
+assert.match(errors, /details:\s*apiError/, 'API error parsing must retain structured error details')
+assert.match(historyModal, /return this\.paymentMethods/, 'Historical payment recovery must allow all active payment methods instead of locking the original method')
+assert.doesNotMatch(historyModal, /filter\(\(method\).*payment_method_id/s, 'Historical payment recovery must not filter the chooser to the original payment method')
+assert.match(historyModal, /payment_initialization_failed/, 'Historical payment recovery must recognize automatic initialization issues')
+assert.match(historyModal, /issue-raised/, 'Historical payment recovery must refresh subscription history after an automatic issue is raised')
+assert.match(purchaseModal, /Customer Service issue raised automatically/, 'New subscription checkout must tell the customer that support was notified automatically')
+assert.match(purchaseModal, /Select another payment method/, 'New subscription checkout must permit retrying with another payment method')
+assert.match(history, /payment_issue && history\.payment_issue\.active/, 'Subscription history must expose the existing automatic payment issue')
+assert.match(history, /Follow up ·/, 'Customers must be directed to follow up rather than create a duplicate issue')
+assert.match(followUp, /addSupportTicketComment/, 'Payment issue follow-up must append to the existing support ticket')
+assert.match(api, /\/account\/tickets\/\$\{encodeURIComponent\(String\(ticketId\)\)\}\/comments/, 'Follow-up must use the existing account support-ticket comment endpoint')
+
+console.log('payment initialization recovery regressions passed')
